@@ -1,0 +1,122 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  font: 16px/145% system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  min-height: 100svh;
+}
+
+input,
+select,
+button,
+textarea {
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.btn-action {
+  border-radius: 999px;
+  border: none;
+  background: #3b82f6;
+  color: #fff;
+  padding: 9px 18px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.btn-action:hover {
+  background: #2563eb;
+}
+.btn-action:active {
+  background: #1d4ed8;
+  transform: scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.btn-ghost {
+  border-radius: 10px;
+  border: 1px solid #d9d0c6;
+  background: #fff;
+  color: #3b82f6;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.btn-ghost:hover {
+  background: #eff6ff;
+}
+.btn-ghost:active {
+  background: #dbeafe;
+  transform: scale(0.95);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.btn-edit {
+  border-radius: 10px;
+  border: none;
+  background: #3b82f6;
+  color: #fff;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.btn-edit:hover {
+  background: #2563eb;
+}
+.btn-edit:active {
+  background: #1d4ed8;
+  transform: scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.btn-delete {
+  border-radius: 10px;
+  border: none;
+  background: #f59e0b;
+  color: #fff;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.btn-delete:hover {
+  background: #d97706;
+}
+.btn-delete:active {
+  background: #b45309;
+  transform: scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.tab-content {
+  animation: fadeIn 0.25s ease-out;
+}
