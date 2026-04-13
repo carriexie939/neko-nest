@@ -40,10 +40,8 @@ The application also includes a Split Bill feature for group dining, social gath
 
 <img width="469" height="923" alt="Screenshot 2026-04-13 at 11 12 12" src="https://github.com/user-attachments/assets/e46b11f9-2a67-4166-bf09-5fd089fca393" />
 <img width="460" height="657" alt="Screenshot 2026-04-13 at 11 12 21" src="https://github.com/user-attachments/assets/52bcdf7a-3bce-46db-88ff-6a0bc952d646" />
-<img width="469" height="923" alt="Screenshot 2026-04-13 at 11 12 12" src="https://github.com/user-attachments/assets/60520e76-b174-40f5-8a03-2fe15ea68764" />
+<img width="431" height="603" alt="Screenshot 2026-04-13 at 11 12 34" src="https://github.com/user-attachments/assets/2048c116-7498-4136-bbad-fbf33e87a84f" />
 
-
-## Folder Structure
 
 ```
 neko-nest/
