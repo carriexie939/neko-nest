@@ -2,7 +2,11 @@ function toNumber(value) {
   const n = Number(value)
   return Number.isFinite(n) ? n : 0
 }
-
+// get the start and end date of a range
+// range is the range of the summary
+// now is the current date
+// return the start and end date object
+// if the range is not found, return null or an empty object
 export function getRangeBoundary(range = 'week', now = new Date()) {
   const start = new Date(now)
   start.setHours(0, 0, 0, 0)
@@ -21,6 +25,10 @@ export function getRangeBoundary(range = 'week', now = new Date()) {
   return { start, end }
 }
 
+// compute the summary of the transactions
+// transactions is an array of transaction objects
+// options is an object with the following properties:
+// - range: 'week' or 'month'
 export function computeSummary(transactions = [], options = {}) {
   const range = options.range || 'week'
   const weeklyBudget = toNumber(options.weeklyBudget)
@@ -32,6 +40,10 @@ export function computeSummary(transactions = [], options = {}) {
     return Number.isFinite(when.getTime()) && when >= start && when < end
   })
 
+  // compute the income, expense, balance, remaining 
+  // the income is the sum of the amounts of the transactions with type 'income'
+  // the expense is the sum of the amounts of the transactions with type 'expense'
+  
   const income = inRange
     .filter((tx) => tx.type === 'income')
     .reduce((sum, tx) => sum + toNumber(tx.amount), 0)

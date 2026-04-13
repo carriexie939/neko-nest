@@ -1,11 +1,23 @@
 const STORAGE_KEY = 'cookieNotes:v1'
 
+// default state
 const DEFAULT_STATE = {
   version: 1,
   transactions: [],
   weeklyBudget: 300,
 }
 
+// normalize a transaction object
+// tx is a transaction object
+// return the normalized transaction object
+// the object has the following properties:
+// - id: string
+// - type: 'income' or 'expense'
+// - category: string
+// - amount: number
+// - date: string
+// - source: 'manual' or 'split'
+// if the transaction is not found, return null or an empty object
 function normalizeTransaction(tx) {
   return {
     id: String(tx?.id || crypto.randomUUID()),
@@ -17,6 +29,14 @@ function normalizeTransaction(tx) {
   }
 }
 
+// migrate persisted state
+// rawParsed is a parsed object
+// return the migrated state object
+// the object has the following properties:
+// - version: number
+// - transactions: array of transaction objects
+// - weeklyBudget: number
+// if the state is not found, return null or an empty object
 export function migratePersistedState(rawParsed) {
   if (!rawParsed || typeof rawParsed !== 'object') return DEFAULT_STATE
   const version = Number(rawParsed.version) || 1
@@ -32,6 +52,13 @@ export function migratePersistedState(rawParsed) {
   }
 }
 
+// load persisted state
+// return the persisted state object
+// the object has the following properties:
+// - version: number
+// - transactions: array of transaction objects
+// - weeklyBudget: number
+// if the state is not found, return null or an empty object
 export function loadPersistedState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -57,6 +84,23 @@ export function savePersistedState(transactions, weeklyBudget) {
   }
 }
 
+// import transactions
+// rawRows is an array of raw rows
+// each row is a transaction object
+// return the transactions array and errors array
+// the transactions array has the following properties:
+// - id: string
+// - type: 'income' or 'expense'
+// - category: string
+// - amount: number
+// - date: string
+// - source: 'manual' or 'split'
+// the errors array has the following properties:
+// - index: number
+// - reason: string
+// if the transactions are not found, return null or an empty array
+// if the errors are not found, return null or an empty array
+// if the rawRows is not found, return null or an empty array
 export function importTransactions(rawRows = []) {
   const errors = []
   const transactions = rawRows
