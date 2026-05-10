@@ -1,16 +1,22 @@
 import { Router } from 'express'
 import { ObjectId } from 'mongodb'
 import { getDB } from '../db.js'
+import { requireAuth } from '../middleware/requireAuth.js'
 
 export const transactionsRouter = Router()
+transactionsRouter.use(requireAuth)
 
 function col() {
   return getDB().collection('transactions')
 }
 
-transactionsRouter.get('/', async (_req, res) => {
+function userId(req) {
+  return new ObjectId(req.user.id)
+}
+
+transactionsRouter.get('/', async (req, res) => {
   try {
-    const docs = await col().find().sort({ date: -1 }).toArray()
+    const docs = await col().find({ userId: userId(req) }).sort({ date: -1 }).toArray()
     res.json(docs)
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -19,8 +25,10 @@ transactionsRouter.get('/', async (_req, res) => {
 
 transactionsRouter.post('/', async (req, res) => {
   try {
+    const uid = userId(req)
     const items = Array.isArray(req.body) ? req.body : [req.body]
     const docs = items.map((item) => ({
+      userId: uid,
       title: String(item.title || ''),
       description: String(item.description || ''),
       type: item.type === 'income' ? 'income' : 'expense',
@@ -55,7 +63,7 @@ transactionsRouter.put('/:id', async (req, res) => {
     }
 
     const result = await col().findOneAndUpdate(
-      { _id: new ObjectId(id) },
+      { _id: new ObjectId(id), userId: userId(req) },
       { $set: update },
       { returnDocument: 'after' },
     )
@@ -71,7 +79,7 @@ transactionsRouter.delete('/:id', async (req, res) => {
     const id = req.params.id
     if (!ObjectId.isValid(id)) return res.status(400).json({ error: 'Invalid id' })
 
-    const result = await col().deleteOne({ _id: new ObjectId(id) })
+    const result = await col().deleteOne({ _id: new ObjectId(id), userId: userId(req) })
     if (result.deletedCount === 0) return res.status(404).json({ error: 'Not found' })
     res.json({ deleted: id })
   } catch (err) {
@@ -79,7 +87,7 @@ transactionsRouter.delete('/:id', async (req, res) => {
   }
 })
 
-transactionsRouter.get('/monthly-trends', async (_req, res) => {
+transactionsRouter.get('/monthly-trends', async (req, res) => {
   try {
     const sixMonthsAgo = new Date()
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
@@ -87,7 +95,13 @@ transactionsRouter.get('/monthly-trends', async (_req, res) => {
     sixMonthsAgo.setHours(0, 0, 0, 0)
 
     const pipeline = [
-      { $match: { type: 'expense', date: { $gte: sixMonthsAgo } } },
+      {
+        $match: {
+          userId: userId(req),
+          type: 'expense',
+          date: { $gte: sixMonthsAgo },
+        },
+      },
       {
         $group: {
           _id: {

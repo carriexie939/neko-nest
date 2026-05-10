@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { computeSummary } from './domain/summary'
 import { evaluateCatState } from './domain/catState'
 import * as api from './utils/api'
+import { clearSession, getToken, setSession } from './utils/authStorage'
+import { AuthScreen } from './components/AuthScreen'
 import { HomeView } from './views/HomeView'
 import { InsightsView } from './views/InsightsView'
 import { SplitView } from './views/SplitView'
@@ -62,7 +64,10 @@ function txId(tx) {
 }
 
 function App() {
-  const [loading, setLoading] = useState(true)
+  const [sessionReady, setSessionReady] = useState(false)
+  const [oauthFlash, setOauthFlash] = useState(null)
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(false)
   const [showCharacterIntro, setShowCharacterIntro] = useState(false)
   const [tab, setTab] = useState('home')
   const [transactions, setTransactions] = useState([])
@@ -80,6 +85,7 @@ function App() {
   const [transactionError, setTransactionError] = useState('')
 
   const reload = useCallback(async () => {
+    setLoading(true)
     try {
       const [txs, settings] = await Promise.all([api.fetchTransactions(), api.fetchSettings()])
       setTransactions(txs)
@@ -94,8 +100,81 @@ function App() {
   }, [])
 
   useEffect(() => {
+    api.setAuthExpiredHandler(() => {
+      setUser(null)
+      setTransactions([])
+    })
+  }, [])
+
+  const handleAuthSuccess = useCallback((u) => {
+    setUser(u)
+  }, [])
+
+  const clearOauthFlash = useCallback(() => setOauthFlash(null), [])
+
+  useEffect(() => {
+    let cancelled = false
+    async function bootstrapSession() {
+      const hash = typeof window !== 'undefined' ? window.location.hash : ''
+      if (hash.startsWith('#oauth=')) {
+        const token = decodeURIComponent(hash.slice('#oauth='.length))
+        window.history.replaceState(null, '', window.location.pathname + window.location.search)
+        if (token && !cancelled) {
+          setSession(token, { id: '', username: '' })
+          try {
+            const me = await api.fetchMe()
+            if (!cancelled) {
+              setSession(token, me)
+              setUser(me)
+            }
+          } catch {
+            clearSession()
+            if (!cancelled) setUser(null)
+          }
+        }
+        if (!cancelled) setSessionReady(true)
+        return
+      }
+      if (hash.startsWith('#oauth_error=')) {
+        const msg = decodeURIComponent(hash.slice('#oauth_error='.length))
+        window.history.replaceState(null, '', window.location.pathname + window.location.search)
+        if (!cancelled) setOauthFlash(msg)
+        if (!cancelled) setSessionReady(true)
+        return
+      }
+      const token = getToken()
+      if (!token) {
+        if (!cancelled) setSessionReady(true)
+        return
+      }
+      try {
+        const me = await api.fetchMe()
+        if (!cancelled) setUser(me)
+      } catch {
+        clearSession()
+        if (!cancelled) setUser(null)
+      } finally {
+        if (!cancelled) setSessionReady(true)
+      }
+    }
+    bootstrapSession()
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!sessionReady || !user) return
     reload()
-  }, [reload])
+  }, [sessionReady, user, reload])
+
+  function handleLogout() {
+    clearSession()
+    setUser(null)
+    setTransactions([])
+    setWeeklyBudget(300)
+    setBudgetInput('300')
+    setShowCharacterIntro(false)
+    setTab('home')
+  }
 
   const weeklySummary = computeSummary(transactions, { range: 'week', weeklyBudget })
   const monthlySummary = computeSummary(transactions, { range: 'month', weeklyBudget })
@@ -205,6 +284,35 @@ function App() {
     fontFamily: 'system-ui, -apple-system, sans-serif',
   }
 
+  if (!sessionReady) {
+    return (
+      <div style={{ ...shell, display: 'grid', placeItems: 'center' }}>
+        <p>Loading...</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          background: tokens.color.bg,
+          color: tokens.color.text,
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+        }}
+      >
+        <div style={{ maxWidth: 420, margin: '0 auto', padding: '40px 24px 48px' }}>
+          <AuthScreen
+            onAuthenticated={handleAuthSuccess}
+            flashError={oauthFlash}
+            onClearFlash={clearOauthFlash}
+          />
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div style={{ ...shell, display: 'grid', placeItems: 'center' }}>
@@ -219,13 +327,26 @@ function App() {
         <CharacterOnboarding onComplete={() => setShowCharacterIntro(false)} />
       ) : null}
       <div style={inner}>
-        <header style={{ marginBottom: 18 }}>
-          <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>
-            NekoNest
-          </h1>
-          <p style={{ margin: 0, fontSize: 13, color: tokens.color.subtext }}>
-            Cozy spending, one nest at a time
-          </p>
+        <header
+          style={{
+            marginBottom: 18,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <div>
+            <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>
+              NekoNest
+            </h1>
+            <p style={{ margin: 0, fontSize: 13, color: tokens.color.subtext }}>
+              Cozy spending, one nest at a time
+            </p>
+          </div>
+          <button type="button" className="btn-ghost" style={{ marginTop: 4, flexShrink: 0 }} onClick={handleLogout}>
+            Log out
+          </button>
         </header>
         <div key={tab} className="tab-content">
         {tab === 'home' && (

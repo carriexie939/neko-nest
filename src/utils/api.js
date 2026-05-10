@@ -1,32 +1,79 @@
+import { clearSession, getToken } from './authStorage'
+
 const BASE = '/api'
 
+let onAuthExpired = () => {}
+
+export function setAuthExpiredHandler(fn) {
+  onAuthExpired = typeof fn === 'function' ? fn : () => {}
+}
+
+function authHeaders() {
+  const t = getToken()
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
+
 async function request(path, options = {}) {
+  const { auth: useAuth = true, ...fetchOptions } = options
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
+    ...fetchOptions,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(useAuth ? authHeaders() : {}),
+      ...fetchOptions.headers,
+    },
   })
+  if (res.status === 401 && useAuth) {
+    clearSession()
+    onAuthExpired()
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error || `HTTP ${res.status}`)
   }
   return res.json()
 }
-// get all transactions
+
+export function fetchMe() {
+  return request('/auth/me')
+}
+
+export function checkEmailRegistered(email) {
+  return request('/auth/check-email', {
+    auth: false,
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function registerAccount({ username, email, password }) {
+  return request('/auth/register', {
+    auth: false,
+    method: 'POST',
+    body: JSON.stringify({ username, email, password }),
+  })
+}
+
+export function loginAccount(login, password) {
+  return request('/auth/login', {
+    auth: false,
+    method: 'POST',
+    body: JSON.stringify({ login, password }),
+  })
+}
+
+export function oauthGoogle(idToken) {
+  return request('/auth/oauth/google', {
+    auth: false,
+    method: 'POST',
+    body: JSON.stringify({ idToken }),
+  })
+}
+
 export function fetchTransactions() {
   return request('/transactions')
 }
 
-// create a new transaction
-// items is an array of transaction objects
-// each transaction object has the following properties:
-// - title: string
-// - description: string
-// - type: 'income' or 'expense'
-// - category: string
-// - amount: number
-// - date: string
-// - source: 'manual' or 'split'
-// return the created transactions
 export function createTransactions(items) {
   return request('/transactions', {
     method: 'POST',
@@ -41,26 +88,14 @@ export function updateTransaction(id, fields) {
   })
 }
 
-// delete a transaction
-// id is the id of the transaction to delete
-// return the deleted transaction id
-// if the transaction is not found, return null
 export function deleteTransaction(id) {
   return request(`/transactions/${id}`, { method: 'DELETE' })
 }
 
-// get all settings
-// return the settings object
-// if the settings are not found, return null
 export function fetchSettings() {
   return request('/settings')
 }
 
-// update the settings
-// settings is an object with the following properties:
-// - weeklyBudget: number
-// return the updated settings object
-// if the settings are not found, return null
 export function updateSettings(settings) {
   return request('/settings', {
     method: 'PUT',
