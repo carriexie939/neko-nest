@@ -21,7 +21,7 @@ export function computeWeeklySummary(transactions = [], budget = {}) {
     expense: summary.expense,
     net: summary.balance,
     remaining: summary.remaining,
-    // 结余生成的简单心情标签，与猫咪视频的 catState 逻辑无关
+    // Simple mood label from balance; unrelated to cat video catState.
     mood: summary.balance > 0 ? 'happy' : summary.balance < 0 ? 'sad' : 'neutral',
     transactionCount: summary.transactionCount,
   }

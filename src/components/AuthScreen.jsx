@@ -306,8 +306,9 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
       const { registered } = await api.checkEmailRegistered(em)
       setFlowEmail(em)
       setPassword('')
-      if (registered) setScreen('login-password')
-      else {
+      if (registered) {
+        setScreen('login-password')
+      } else {
         setRegUsername('')
         setRegPassword('')
         setScreen('register-setup')
