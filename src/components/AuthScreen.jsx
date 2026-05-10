@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { tokens } from '../theme/tokens'
 import * as api from '../utils/api'
 import { setSession } from '../utils/authStorage'
@@ -100,6 +100,7 @@ function WelcomeHero() {
           color: '#3b82f6',
           fontFamily: fontHandwritten,
           transform: 'translateY(52%)',
+          pointerEvents: 'none',
         }}
       >
         Welcome back
@@ -117,14 +118,6 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
   const [regPassword, setRegPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  /** GIS renders here off-screen; visible row matches Instagram spacing. */
-  const googleHiddenRef = useRef(null)
-  /** GIS allows only one initialize() per page; keep callback fresh via ref. */
-  const onAuthenticatedRef = useRef(onAuthenticated)
-  onAuthenticatedRef.current = onAuthenticated
-  const googleInitClientRef = useRef(null)
-
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
   const card = {
     background: c.panel,
@@ -174,7 +167,7 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
     background: '#3b82f6',
   }
 
-  /** Visually aligned with Google GIS “outline” pill (no extra outer frame). */
+  /** Visually aligned with Google / Meta outline pills. */
   const gsiOutlineCompanion = {
     width: '100%',
     boxSizing: 'border-box',
@@ -194,90 +187,6 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
       onClearFlash?.()
     }
   }, [flashError, onClearFlash])
-
-  useEffect(() => {
-    if (!googleClientId) return
-    if (document.querySelector('script[data-neko-gsi]')) return
-    const s = document.createElement('script')
-    s.src = 'https://accounts.google.com/gsi/client'
-    s.async = true
-    s.defer = true
-    s.dataset.nekoGsi = '1'
-    document.head.appendChild(s)
-  }, [googleClientId])
-
-  useEffect(() => {
-    if (!googleClientId || screen !== 'welcome') return
-
-    let cancelled = false
-    let pollId = 0
-    let rafOuter = 0
-    let rafInner = 0
-
-    function mountButton() {
-      if (cancelled) return
-      const el = googleHiddenRef.current
-      if (!el || !window.google?.accounts?.id) {
-        pollId = window.setTimeout(mountButton, 40)
-        return
-      }
-
-      if (googleInitClientRef.current !== googleClientId) {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: async (res) => {
-            if (!res.credential) return
-            setError('')
-            setBusy(true)
-            try {
-              const r = await api.oauthGoogle(res.credential)
-              setSession(r.token, r.user)
-              onAuthenticatedRef.current(r.user)
-            } catch (e) {
-              setError(e.message || 'Google sign-in failed.')
-            } finally {
-              setBusy(false)
-            }
-          },
-        })
-        googleInitClientRef.current = googleClientId
-      }
-
-      el.innerHTML = ''
-      const width = 400
-
-      window.google.accounts.id.renderButton(el, {
-        type: 'standard',
-        theme: 'outline',
-        size: 'large',
-        text: 'continue_with',
-        shape: 'pill',
-        width,
-      })
-    }
-
-    rafOuter = requestAnimationFrame(() => {
-      rafInner = requestAnimationFrame(mountButton)
-    })
-
-    return () => {
-      cancelled = true
-      cancelAnimationFrame(rafOuter)
-      cancelAnimationFrame(rafInner)
-      window.clearTimeout(pollId)
-    }
-  }, [screen, googleClientId])
-
-  function triggerGoogleSignIn() {
-    const el = googleHiddenRef.current?.querySelector('[role="button"]')
-    if (el) {
-      el.click()
-      return
-    }
-    requestAnimationFrame(() => {
-      googleHiddenRef.current?.querySelector('[role="button"]')?.click()
-    })
-  }
 
   function startOAuth(path) {
     setError('')
@@ -418,7 +327,7 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
 
   if (screen === 'welcome') {
     return (
-      <div className="auth-screen" style={card}>
+      <div className="auth-screen" style={{ ...card, position: 'relative', zIndex: 0 }}>
         <WelcomeHero />
         <p
           style={{
@@ -427,53 +336,42 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
             color: c.subtext,
             textAlign: 'center',
             lineHeight: 1.45,
+            position: 'relative',
+            zIndex: 1,
           }}
         >
           Sign in to NekoNest
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {googleClientId ? (
-            <div style={{ position: 'relative', width: '100%' }}>
-              <div
-                ref={googleHiddenRef}
-                className="auth-google-slot"
-                aria-hidden
-                style={{
-                  position: 'absolute',
-                  left: '-9999px',
-                  top: 0,
-                  width: 400,
-                  height: 54,
-                  overflow: 'hidden',
-                }}
-              />
-              <button
-                type="button"
-                onClick={triggerGoogleSignIn}
-                disabled={busy}
-                aria-label="Continue with Google"
-                style={{
-                  ...gsiOutlineCompanion,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 12,
-                  padding: '10px 16px',
-                  cursor: busy ? 'wait' : 'pointer',
-                }}
-              >
-                <span style={{ flexShrink: 0, display: 'grid', placeItems: 'center' }}>
-                  <IconGoogleG />
-                </span>
-                Continue with Google
-              </button>
-            </div>
-          ) : (
-            <p style={{ margin: 0, fontSize: 12, color: c.subtext, textAlign: 'center' }}>
-              Add <code style={{ fontSize: 11, color: c.text }}>VITE_GOOGLE_CLIENT_ID</code> to enable Google.
-            </p>
-          )}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => startOAuth('/google/start')}
+            disabled={busy}
+            aria-label="Continue with Google"
+            style={{
+              ...gsiOutlineCompanion,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              padding: '10px 16px',
+              cursor: busy ? 'wait' : 'pointer',
+            }}
+          >
+            <span style={{ flexShrink: 0, display: 'grid', placeItems: 'center' }}>
+              <IconGoogleG />
+            </span>
+            Continue with Google
+          </button>
 
           <button
             type="button"

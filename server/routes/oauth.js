@@ -93,6 +93,92 @@ oauthRouter.post('/google', async (req, res) => {
   }
 })
 
+/** Full-page OAuth (no GIS/FedCM popups). Requires GOOGLE_CLIENT_SECRET + GOOGLE_REDIRECT_URI. */
+oauthRouter.get('/google/start', (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI
+  if (!clientId || !clientSecret || !redirectUri) {
+    return res.redirect(
+      `${frontendUrl()}#oauth_error=${encodeURIComponent(
+        'Google redirect sign-in is not configured (set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI).',
+      )}`,
+    )
+  }
+  const state = signOAuthState('google')
+  const u = new URL('https://accounts.google.com/o/oauth2/v2/auth')
+  u.searchParams.set('client_id', clientId)
+  u.searchParams.set('redirect_uri', redirectUri)
+  u.searchParams.set('response_type', 'code')
+  u.searchParams.set('scope', 'openid email profile')
+  u.searchParams.set('state', state)
+  u.searchParams.set('prompt', 'select_account')
+  res.redirect(u.toString())
+})
+
+oauthRouter.get('/google/callback', async (req, res) => {
+  try {
+    const { code, state, error, error_description: errDesc } = req.query
+    if (error) {
+      return res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent(String(errDesc || error))}`)
+    }
+    jwt.verify(String(state || ''), jwtSecret())
+    if (!code) {
+      return res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent('Missing authorization code.')}`)
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI
+    const oauth2Client = new OAuth2Client(clientId, clientSecret, redirectUri)
+    const { tokens } = await oauth2Client.getToken(String(code))
+
+    let email
+    let sub
+    let name
+    if (tokens.id_token) {
+      const ticket = await oauth2Client.verifyIdToken({
+        idToken: tokens.id_token,
+        audience: clientId,
+      })
+      const p = ticket.getPayload()
+      email = p.email
+      sub = p.sub
+      name = p.name
+    } else if (tokens.access_token) {
+      const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      })
+      const data = await r.json()
+      if (data.error) throw new Error(data.error_description || data.error || 'Google userinfo error')
+      email = data.email
+      sub = data.sub || data.id
+      name = data.name
+    } else {
+      return res.redirect(
+        `${frontendUrl()}#oauth_error=${encodeURIComponent('Google did not return tokens needed for sign-in.')}`,
+      )
+    }
+
+    if (!email || !sub) {
+      return res.redirect(
+        `${frontendUrl()}#oauth_error=${encodeURIComponent('Google did not return a usable email or account id.')}`,
+      )
+    }
+
+    const user = await upsertOAuthUser({
+      email,
+      usernameHint: name || email.split('@')[0],
+      provider: 'google',
+      providerId: String(sub),
+    })
+    const token = signUserToken(user._id, user.username)
+    redirectWithToken(res, token)
+  } catch (err) {
+    res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent(err.message || 'Google sign-in failed.')}`)
+  }
+})
+
 oauthRouter.get('/microsoft/start', (req, res) => {
   if (!process.env.MICROSOFT_CLIENT_ID || !process.env.MICROSOFT_REDIRECT_URI) {
     return res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent('Microsoft sign-in is not configured on the server.')}`)
