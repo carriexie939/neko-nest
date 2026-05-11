@@ -112,7 +112,10 @@ oauthRouter.get('/google/start', (req, res) => {
   u.searchParams.set('response_type', 'code')
   u.searchParams.set('scope', 'openid email profile')
   u.searchParams.set('state', state)
-  u.searchParams.set('prompt', 'select_account')
+  // Omitting `prompt` is faster for users already signed into Google (fewer screens).
+  // Set GOOGLE_OAUTH_PROMPT=select_account if you always need the account chooser.
+  const googlePrompt = process.env.GOOGLE_OAUTH_PROMPT
+  if (googlePrompt) u.searchParams.set('prompt', googlePrompt)
   res.redirect(u.toString())
 })
 
