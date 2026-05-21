@@ -94,7 +94,7 @@ authRouter.post('/login', async (req, res) => {
     }
     if (!user.passwordHash) {
       return res.status(401).json({
-        error: 'This account uses social sign-in. Please use Google or Instagram.',
+        error: 'This account uses social sign-in. Please use Google or Meta (not email/password).',
       })
     }
 

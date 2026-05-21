@@ -4,6 +4,7 @@ import cors from 'cors'
 import { connectDB, getDB } from './db.js'
 import { authRouter } from './routes/auth.js'
 import { oauthRouter } from './routes/oauth.js'
+import { receiptsRouter } from './routes/receipts.js'
 import { transactionsRouter } from './routes/transactions.js'
 import { settingsRouter } from './routes/settings.js'
 
@@ -11,10 +12,11 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: '12mb' }))
 
 app.use('/api/auth', authRouter)
 app.use('/api/auth/oauth', oauthRouter)
+app.use('/api/receipts', receiptsRouter)
 app.use('/api/transactions', transactionsRouter)
 app.use('/api/settings', settingsRouter)
 

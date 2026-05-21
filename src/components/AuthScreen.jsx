@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { tokens } from '../theme/tokens'
 import * as api from '../utils/api'
 import { setSession } from '../utils/authStorage'
@@ -18,7 +18,7 @@ function validatePasswordClient(password) {
   return null
 }
 
-/** Multicolor “G” sized to match `IconInstagram` (22×22). */
+/** Multicolor “G” sized to match `IconMeta` (22×22). */
 function IconGoogleG() {
   return (
     <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden>
@@ -42,19 +42,14 @@ function IconGoogleG() {
   )
 }
 
-function IconInstagram() {
+/** Meta (Facebook Login) icon — 22×22, matches Google row. */
+function IconMeta() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden>
-      <defs>
-        <linearGradient id="nekoIgGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#f09433" />
-          <stop offset="0.5" stopColor="#dc2743" />
-          <stop offset="1" stopColor="#bc1888" />
-        </linearGradient>
-      </defs>
+      <circle cx="12" cy="12" r="12" fill="#0866FF" />
       <path
-        fill="url(#nekoIgGrad)"
-        d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"
+        fill="#fff"
+        d="M13.5 12.5h2.2l0.9-2.9h-2.2V8.1c0-.8.3-1.4 1.5-1.4h1.2V4.1c-.2 0-1.1-.1-2.1-.1-2.1 0-3.5 1.3-3.5 3.6v1.9H9.2v2.9h2.4V19h2.9v-6.5z"
       />
     </svg>
   )
@@ -62,6 +57,33 @@ function IconInstagram() {
 
 const WELCOME_PAWS_URL = '/auth-welcome-paws.png'
 const fontHandwritten = "'Caveat', 'Segoe Print', 'Bradley Hand', cursive"
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
+let googleIdentityScriptPromise
+
+function loadGoogleIdentityScript() {
+  if (window.google?.accounts?.id) return Promise.resolve()
+  if (googleIdentityScriptPromise) return googleIdentityScriptPromise
+
+  googleIdentityScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]')
+    if (existing) {
+      existing.addEventListener('load', resolve, { once: true })
+      existing.addEventListener('error', reject, { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = resolve
+    script.onerror = () => reject(new Error('Google sign-in failed to load.'))
+    document.head.appendChild(script)
+  })
+
+  return googleIdentityScriptPromise
+}
 
 /** Paw strip + “Welcome back” anchored between art and body copy. */
 function WelcomeHero() {
@@ -118,6 +140,7 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
   const [regPassword, setRegPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const googleFallbackTimer = useRef(null)
 
   const card = {
     background: c.panel,
@@ -188,9 +211,69 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
     }
   }, [flashError, onClearFlash])
 
+  useEffect(() => {
+    return () => {
+      if (googleFallbackTimer.current) window.clearTimeout(googleFallbackTimer.current)
+    }
+  }, [])
+
   function startOAuth(path) {
     setError('')
+    setBusy(true)
     window.location.href = `/api/auth/oauth${path}`
+  }
+
+  async function completeGoogleSignIn(response) {
+    if (googleFallbackTimer.current) {
+      window.clearTimeout(googleFallbackTimer.current)
+      googleFallbackTimer.current = null
+    }
+
+    if (!response?.credential) {
+      setBusy(false)
+      setError('Google did not return a sign-in token.')
+      return
+    }
+
+    try {
+      const { token, user } = await api.oauthGoogle(response.credential)
+      setSession(token, user)
+      onAuthenticated(user)
+    } catch (err) {
+      setError(err.message || 'Google sign-in failed.')
+      setBusy(false)
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setError('')
+
+    if (!GOOGLE_CLIENT_ID) {
+      setError('Google sign-in is not configured.')
+      return
+    }
+
+    setBusy(true)
+    try {
+      await loadGoogleIdentityScript()
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: completeGoogleSignIn,
+        use_fedcm_for_prompt: true,
+      })
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
+          startOAuth('/google/start')
+        }
+      })
+
+      googleFallbackTimer.current = window.setTimeout(() => {
+        setBusy(false)
+      }, 2500)
+    } catch {
+      setBusy(false)
+      startOAuth('/google/start')
+    }
   }
 
   function goWelcome() {
@@ -354,7 +437,7 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
         >
           <button
             type="button"
-            onClick={() => startOAuth('/google/start')}
+            onClick={handleGoogleSignIn}
             disabled={busy}
             aria-label="Continue with Google"
             style={{
@@ -370,13 +453,14 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
             <span style={{ flexShrink: 0, display: 'grid', placeItems: 'center' }}>
               <IconGoogleG />
             </span>
-            Continue with Google
+            {busy ? 'Opening Google…' : 'Continue with Google'}
           </button>
 
           <button
             type="button"
-            onClick={() => startOAuth('/instagram/start')}
+            onClick={() => startOAuth('/meta/start')}
             disabled={busy}
+            aria-label="Continue with Meta"
             style={{
               ...gsiOutlineCompanion,
               display: 'flex',
@@ -388,9 +472,9 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
             }}
           >
             <span style={{ flexShrink: 0, display: 'grid', placeItems: 'center' }}>
-              <IconInstagram />
+              <IconMeta />
             </span>
-            Continue with Instagram
+            {busy ? 'Opening Meta…' : 'Continue with Meta'}
           </button>
         </div>
 

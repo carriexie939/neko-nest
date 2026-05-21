@@ -6,6 +6,7 @@ import { clearSession, getToken, setSession } from './utils/authStorage'
 import { AuthScreen } from './components/AuthScreen'
 import { HomeView } from './views/HomeView'
 import { InsightsView } from './views/InsightsView'
+import { ReceiptView } from './views/ReceiptView'
 import { SplitView } from './views/SplitView'
 import { TabBar } from './components/TabBar'
 import { CharacterOnboarding } from './components/CharacterOnboarding'
@@ -34,11 +35,11 @@ function toDateInputValue(date = new Date()) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-function parseDateInputToLocalMidnight(value) {
+function parseDateInputToLocalDate(value) {
   const parts = String(value).trim().split('-').map(Number)
   if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return null
   const [y, m, d] = parts
-  const when = new Date(y, m - 1, d, 0, 0, 0, 0)
+  const when = new Date(y, m - 1, d, 12, 0, 0, 0)
   if (when.getFullYear() !== y || when.getMonth() !== m - 1 || when.getDate() !== d) return null
   return when
 }
@@ -47,7 +48,8 @@ function formatTransactionDate(isoString) {
   try {
     const d = new Date(isoString)
     if (Number.isNaN(d.getTime())) return String(isoString)
-    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    const pad = (n) => String(n).padStart(2, '0')
+    return `${String(d.getFullYear()).slice(-2)}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   } catch {
     return String(isoString)
   }
@@ -55,6 +57,7 @@ function formatTransactionDate(isoString) {
 
 const TABS = [
   { id: 'home', label: 'Home', emoji: '🏠' },
+  { id: 'receipt', label: 'Receipt', emoji: '📷' },
   { id: 'insights', label: 'Insights', emoji: '📊' },
   { id: 'split', label: 'Split', emoji: '👥' },
 ]
@@ -194,7 +197,7 @@ function App() {
     if (parsedAmount <= 0) { setTransactionError('Amount must be greater than zero.'); return }
     if (parsedAmount > 99999) { setTransactionError('Amount cannot exceed 5 digits.'); return }
     if (!txDateFrom) { setTransactionError('Please select a date.'); return }
-    const date = parseDateInputToLocalMidnight(txDateFrom)
+    const date = parseDateInputToLocalDate(txDateFrom)
     if (!date) { setTransactionError('Please select a valid date.'); return }
 
     setTransactionError('')
@@ -274,6 +277,12 @@ function App() {
     } catch (err) {
       console.error('Split create failed:', err)
     }
+  }
+
+  async function handleCreateReceiptExpense(item) {
+    const created = await api.createTransactions([item])
+    setTransactions((prev) => [...created, ...prev])
+    setTab('home')
   }
 
   const shell = { background: tokens.color.bg, minHeight: '100vh', color: tokens.color.text }
@@ -390,6 +399,12 @@ function App() {
             insightRange={insightRange}
             setInsightRange={setInsightRange}
             weeklyBudget={weeklyBudget}
+          />
+        )}
+        {tab === 'receipt' && (
+          <ReceiptView
+            onCreateReceiptExpense={handleCreateReceiptExpense}
+            categoryOptions={CATEGORY_OPTIONS.expense}
           />
         )}
         {tab === 'split' && (

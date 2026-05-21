@@ -31,11 +31,18 @@ transactionsRouter.post('/', async (req, res) => {
       userId: uid,
       title: String(item.title || ''),
       description: String(item.description || ''),
+      merchant: String(item.merchant || ''),
       type: item.type === 'income' ? 'income' : 'expense',
       category: String(item.category || 'others'),
       amount: Number(item.amount) || 0,
       date: new Date(item.date || Date.now()),
       source: item.source || 'manual',
+      receiptItems: Array.isArray(item.receiptItems)
+        ? item.receiptItems.slice(0, 30).map((entry) => ({
+            name: String(entry?.name || ''),
+            amount: Number(entry?.amount) || 0,
+          }))
+        : [],
     }))
     const result = await col().insertMany(docs)
     const inserted = await col()
@@ -53,7 +60,7 @@ transactionsRouter.put('/:id', async (req, res) => {
     if (!ObjectId.isValid(id)) return res.status(400).json({ error: 'Invalid id' })
 
     const update = {}
-    const allowed = ['title', 'description', 'type', 'category', 'amount', 'date', 'source']
+    const allowed = ['title', 'description', 'merchant', 'type', 'category', 'amount', 'date', 'source']
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         if (key === 'amount') update[key] = Number(req.body[key]) || 0

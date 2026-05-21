@@ -64,6 +64,7 @@ export function computeSummary(transactions = [], options = {}) {
     weeklyBudget,
     transactionCount: inRange.length,
     byCategory: buildCategoryBreakdown(inRange, 'expense'),
+    byMerchant: buildMerchantBreakdown(inRange, 'expense'),
   }
 }
 
@@ -88,4 +89,24 @@ export function buildCategoryBreakdown(transactions = [], type = 'expense') {
 
 export function topSpendingCategories(summary, limit = 3) {
   return (summary?.byCategory || []).slice(0, limit)
+}
+
+export function buildMerchantBreakdown(transactions = [], type = 'expense') {
+  const bucket = new Map()
+  transactions
+    .filter((tx) => tx.type === type)
+    .forEach((tx) => {
+      const key = String(tx.merchant || '').trim()
+      if (!key) return
+      bucket.set(key, (bucket.get(key) || 0) + toNumber(tx.amount))
+    })
+
+  const total = Array.from(bucket.values()).reduce((sum, value) => sum + value, 0)
+  return Array.from(bucket.entries())
+    .map(([merchant, amount]) => ({
+      merchant,
+      amount,
+      percentage: total > 0 ? (amount / total) * 100 : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount)
 }

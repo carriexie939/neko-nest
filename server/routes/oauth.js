@@ -19,20 +19,33 @@ function signOAuthState(provider) {
   return jwt.sign({ provider, t: Date.now() }, jwtSecret(), { expiresIn: '10m' })
 }
 
+function verifyOAuthState(state, expectedProvider) {
+  const payload = jwt.verify(String(state || ''), jwtSecret())
+  if (payload.provider !== expectedProvider) {
+    throw new Error('Invalid OAuth state.')
+  }
+  return payload
+}
+
+function redirectWithError(res, message) {
+  res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent(message)}`)
+}
+
 function redirectWithToken(res, token) {
   res.redirect(`${frontendUrl()}#oauth=${encodeURIComponent(token)}`)
 }
 
 async function upsertOAuthUser({ email, usernameHint, provider, providerId }) {
   const emailNorm = normalizeEmail(email)
-  if (!emailNorm) throw new Error('Email is required from the provider.')
+  if (!providerId) throw new Error('Account id is required from the provider.')
 
-  let user = await usersCol().findOne({
-    $or: [{ email: emailNorm }, { [`oauth.${provider}`]: providerId }],
-  })
+  const lookup = [{ [`oauth.${provider}`]: providerId }]
+  if (emailNorm) lookup.push({ email: emailNorm })
+
+  let user = await usersCol().findOne({ $or: lookup })
 
   if (!user) {
-    let base = String(usernameHint || emailNorm.split('@')[0] || 'user')
+    let base = String(usernameHint || (emailNorm ? emailNorm.split('@')[0] : '') || `${provider}_${providerId}`)
       .replace(/[^a-zA-Z0-9_]/g, '_')
       .slice(0, 24) || 'user'
     base = normalizeUsername(base)
@@ -45,15 +58,15 @@ async function upsertOAuthUser({ email, usernameHint, provider, providerId }) {
     }
     const doc = {
       username,
-      email: emailNorm,
       createdAt: new Date(),
       oauth: { [provider]: providerId },
     }
+    if (emailNorm) doc.email = emailNorm
     const result = await usersCol().insertOne(doc)
     user = await usersCol().findOne({ _id: result.insertedId })
   } else {
     const set = { [`oauth.${provider}`]: providerId }
-    if (!user.email) set.email = emailNorm
+    if (emailNorm && !user.email) set.email = emailNorm
     await usersCol().updateOne({ _id: user._id }, { $set: set })
     user = await usersCol().findOne({ _id: user._id })
   }
@@ -125,7 +138,7 @@ oauthRouter.get('/google/callback', async (req, res) => {
     if (error) {
       return res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent(String(errDesc || error))}`)
     }
-    jwt.verify(String(state || ''), jwtSecret())
+    verifyOAuthState(state, 'google')
     if (!code) {
       return res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent('Missing authorization code.')}`)
     }
@@ -231,7 +244,7 @@ oauthRouter.get('/microsoft/callback', async (req, res) => {
     if (error) {
       return res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent(String(errDesc || error))}`)
     }
-    jwt.verify(String(state || ''), jwtSecret())
+    verifyOAuthState(state, 'microsoft')
     if (!code) {
       return res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent('Missing authorization code.')}`)
     }
@@ -253,23 +266,28 @@ oauthRouter.get('/microsoft/callback', async (req, res) => {
   }
 })
 
-/** Instagram consumer login uses Meta / Facebook OAuth. */
-oauthRouter.get('/instagram/start', (req, res) => {
-  res.redirect('/api/auth/oauth/facebook/start')
-})
-
-oauthRouter.get('/facebook/start', (req, res) => {
-  if (!process.env.FACEBOOK_APP_ID || !process.env.FACEBOOK_REDIRECT_URI) {
-    return res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent('Facebook / Meta sign-in is not configured on the server.')}`)
+function startMetaOAuth(res) {
+  if (!process.env.FACEBOOK_APP_ID || !process.env.FACEBOOK_APP_SECRET || !process.env.FACEBOOK_REDIRECT_URI) {
+    return redirectWithError(
+      res,
+      'Meta sign-in is not configured (set FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, FACEBOOK_REDIRECT_URI).',
+    )
   }
   const state = signOAuthState('facebook')
   const u = new URL('https://www.facebook.com/v19.0/dialog/oauth')
   u.searchParams.set('client_id', process.env.FACEBOOK_APP_ID)
   u.searchParams.set('redirect_uri', process.env.FACEBOOK_REDIRECT_URI)
+  u.searchParams.set('response_type', 'code')
+  u.searchParams.set('display', 'page')
   u.searchParams.set('state', state)
-  u.searchParams.set('scope', 'email,public_profile')
+  u.searchParams.set('scope', 'public_profile')
   res.redirect(u.toString())
-})
+}
+
+/** Meta Login (Facebook Login). Preferred entry for the auth UI. */
+oauthRouter.get('/meta/start', (req, res) => startMetaOAuth(res))
+
+oauthRouter.get('/facebook/start', (req, res) => startMetaOAuth(res))
 
 async function exchangeFacebookCode(code) {
   const u = new URL('https://graph.facebook.com/v19.0/oauth/access_token')
@@ -285,7 +303,7 @@ async function exchangeFacebookCode(code) {
 
 async function fetchFacebookProfile(accessToken) {
   const u = new URL('https://graph.facebook.com/me')
-  u.searchParams.set('fields', 'id,email,name')
+  u.searchParams.set('fields', 'id,name')
   u.searchParams.set('access_token', accessToken)
   const r = await fetch(u.toString())
   const data = await r.json()
@@ -299,17 +317,14 @@ oauthRouter.get('/facebook/callback', async (req, res) => {
     if (error) {
       return res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent(String(errDesc || error))}`)
     }
-    jwt.verify(String(state || ''), jwtSecret())
+    verifyOAuthState(state, 'facebook')
     if (!code) {
       return res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent('Missing authorization code.')}`)
     }
     const accessToken = await exchangeFacebookCode(String(code))
     const profile = await fetchFacebookProfile(accessToken)
-    if (!profile.email) {
-      return res.redirect(`${frontendUrl()}#oauth_error=${encodeURIComponent('Facebook did not share an email. Please allow email permission.')}`)
-    }
     const user = await upsertOAuthUser({
-      email: profile.email,
+      email: null,
       usernameHint: profile.name,
       provider: 'facebook',
       providerId: String(profile.id),

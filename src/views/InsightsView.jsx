@@ -155,6 +155,35 @@ export function InsightsView({
           </div>
         )}
       </div>
+
+      <div style={card}>
+        <h3 style={{ marginTop: 0 }}>Top Merchants</h3>
+        {activeSummary.byMerchant.length === 0 ? (
+          <p style={{ margin: 0, color: tokens.color.subtext }}>No merchant data yet.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {activeSummary.byMerchant.slice(0, 5).map((row, i) => {
+              const maxAmount = activeSummary.byMerchant[0].amount || 1
+              const pct = Math.max((row.amount / maxAmount) * 100, 8)
+              return (
+                <div key={row.merchant}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: tokens.color.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      #{i + 1} {row.merchant}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#1e3a5f', flexShrink: 0 }}>
+                      ${row.amount.toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={{ width: '100%', height: 12, background: '#f5f5f0', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: '#0d9488', borderRadius: 999 }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </section>
   )
 }
@@ -297,4 +326,3 @@ const catIcon = {
   fontSize: 13,
   margin: '0 auto',
 }
-

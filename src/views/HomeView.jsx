@@ -58,6 +58,7 @@ export function HomeView({
     setEditFields({
       title: tx.title || '',
       description: tx.description || '',
+      merchant: tx.merchant || '',
       amount: String(tx.amount),
       category: tx.category || '',
       type: tx.type || 'expense',
@@ -74,13 +75,14 @@ export function HomeView({
     const update = {
       title: editFields.title,
       description: editFields.description,
+      merchant: editFields.merchant,
       amount: Number(editFields.amount) || 0,
       category: editFields.category,
       type: editFields.type,
     }
     if (editFields.date) {
       const [y, m, d] = editFields.date.split('-').map(Number)
-      update.date = new Date(y, m - 1, d).toISOString()
+      update.date = new Date(y, m - 1, d, 12, 0, 0, 0).toISOString()
     }
     handleEditTransaction(id, update)
     cancelEdit()
@@ -205,9 +207,10 @@ export function HomeView({
             if (!q) return true
             const amt = String(tx.amount)
             const title = (tx.title || '').toLowerCase()
+            const merchant = (tx.merchant || '').toLowerCase()
             const cat = (tx.category || '').toLowerCase()
             const desc = (tx.description || '').toLowerCase()
-            return amt.includes(q) || title.includes(q) || cat.includes(q) || desc.includes(q)
+            return amt.includes(q) || title.includes(q) || merchant.includes(q) || cat.includes(q) || desc.includes(q)
           }).slice(0, 20)
           return filtered.length === 0 ? (
             <p style={{ margin: '10px 0 0', color: tokens.color.subtext }}>
@@ -227,6 +230,12 @@ export function HomeView({
                       value={editFields.title}
                       onChange={(e) => setEditFields((f) => ({ ...f, title: e.target.value }))}
                       placeholder="Title"
+                      style={fieldInput}
+                    />
+                    <input
+                      value={editFields.merchant}
+                      onChange={(e) => setEditFields((f) => ({ ...f, merchant: e.target.value }))}
+                      placeholder="Merchant"
                       style={fieldInput}
                     />
                     <div style={{ display: 'flex', gap: 6 }}>
@@ -295,6 +304,7 @@ export function HomeView({
                     </div>
                     <div style={{ fontSize: 13, color: tokens.color.subtext }}>
                       {tx.category} · {formatTransactionDate(tx.date)}
+                      {tx.merchant ? ` · ${tx.merchant}` : ''}
                     </div>
                     {tx.description ? (
                       <div style={{ fontSize: 12, color: tokens.color.subtext, marginTop: 2 }}>

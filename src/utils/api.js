@@ -70,6 +70,13 @@ export function oauthGoogle(idToken) {
   })
 }
 
+export function parseReceipt(imageDataUrl) {
+  return request('/receipts/parse', {
+    method: 'POST',
+    body: JSON.stringify({ imageDataUrl }),
+  })
+}
+
 export function fetchTransactions() {
   return request('/transactions')
 }
