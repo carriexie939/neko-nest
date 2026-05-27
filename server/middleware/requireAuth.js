@@ -4,7 +4,7 @@ export function jwtSecret() {
   const s = process.env.JWT_SECRET
   if (!s) {
     console.warn('JWT_SECRET is not set; using insecure dev default. Set JWT_SECRET in production.')
-    return 'neko-nest-dev-insecure-secret'
+    return 'pocket-cookie-dev-insecure-secret'
   }
   return s
 }

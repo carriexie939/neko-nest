@@ -1,5 +1,5 @@
-const TOKEN_KEY = 'neko_nest_token'
-const USER_KEY = 'neko_nest_user'
+const TOKEN_KEY = 'pocket_cookie_token'
+const USER_KEY = 'pocket_cookie_user'
 
 export function getToken() {
   try {

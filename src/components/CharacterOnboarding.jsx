@@ -19,7 +19,7 @@ export function CharacterOnboarding({ onComplete }) {
           aria-label="Cat walking animation"
           style={videoStyle}
         />
-        <h2 style={{ margin: '12px 0 6px', textAlign: 'center' }}>Welcome to NekoNest</h2>
+        <h2 style={{ margin: '12px 0 6px', textAlign: 'center' }}>Welcome to Pocket Cookie</h2>
         <p style={{ margin: '0 0 14px', color: '#6b5b4d', textAlign: 'center', fontSize: 14 }}>
           Track your spending with your cozy cat companion.
         </p>

@@ -1,4 +1,4 @@
-const INTRO_KEY = 'neko-nest-seen-character-intro'
+const INTRO_KEY = 'pocket-cookie-seen-character-intro'
 
 export function hasSeenCharacterIntro() {
   try {

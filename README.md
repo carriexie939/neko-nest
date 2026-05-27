@@ -1,12 +1,12 @@
-# NekoNest — Expense Tracker with Cat Companion
+# Pocket Cookie — Expense Tracker with Cat Companion
 
 A single-page expense tracking application where a virtual cat reacts to your spending habits. Built with React, Node.js/Express, and MongoDB.
 
 ## Problem Statement
 
-NekoNest is a single-page expense tracking application designed to make personal finance management more engaging and intuitive. Instead of presenting expense tracking as a purely functional task, the app introduces an animated virtual cat companion whose mood reflects the user’s financial behaviour. When the user overspends, the cat becomes upset; when spending is well managed, the cat responds positively. This emotional feedback loop encourages users to build healthier spending habits in a more interactive way.
+Pocket Cookie is a single-page expense tracking application designed to make personal finance management more engaging and intuitive. Instead of presenting expense tracking as a purely functional task, the app introduces an animated virtual cat companion whose mood reflects the user’s financial behaviour. When the user overspends, the cat becomes upset; when spending is well managed, the cat responds positively. This emotional feedback loop encourages users to build healthier spending habits in a more interactive way.
 
-In addition to recording expenses, NekoNest helps users better understand their financial patterns by providing monthly spending insights and highlighting the categories in which they spend the most. This allows users to reflect on their habits and make more informed decisions about how to optimise their expenses.
+In addition to recording expenses, Pocket Cookie helps users better understand their financial patterns by providing monthly spending insights and highlighting the categories in which they spend the most. This allows users to reflect on their habits and make more informed decisions about how to optimise their expenses.
 
 The application also includes a Split Bill feature for group dining, social gatherings, and other shared spending scenarios. Users can quickly split a bill with friends, and the corresponding records can be incorporated into their expense tracking workflow. This improves convenience and supports more efficient day-to-day financial management.
 
@@ -44,7 +44,7 @@ The application also includes a Split Bill feature for group dining, social gath
 
 
 ```
-neko-nest/
+pocket-cookie/
 ├── server/                  # Backend (Node.js + Express)
 │   ├── index.js             # Express server entry point, middleware, MongoDB connection
 │   ├── db.js                # MongoDB connection utility (connectDB, getDB)
@@ -103,7 +103,7 @@ neko-nest/
 
 ```bash
 # 1. Install dependencies
-cd neko-nest
+cd pocket-cookie
 npm install
 
 # 2. Create .env file with your MongoDB connection string

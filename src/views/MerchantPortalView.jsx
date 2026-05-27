@@ -55,7 +55,7 @@ export function MerchantPortalView({ onExit }) {
               Merchant insights
             </h1>
             <p style={{ margin: 0, fontSize: 13, color: tokens.color.subtext, lineHeight: 1.45 }}>
-              Aggregated spending patterns from opted-in NekoNest users (demo data).
+              Aggregated spending patterns from opted-in Pocket Cookie users (demo data).
             </p>
           </div>
           <button type="button" className="btn-ghost" style={{ flexShrink: 0, marginTop: 4 }} onClick={onExit}>

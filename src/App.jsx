@@ -93,7 +93,7 @@ function App() {
   const [txDateFrom, setTxDateFrom] = useState(() => toDateInputValue())
   const [txDateTo, setTxDateTo] = useState(() => toDateInputValue())
   const [weeklyBudget, setWeeklyBudget] = useState(300)
-  const [petName, setPetName] = useState('Neko')
+  const [petName, setPetName] = useState('Cookie')
   const [budgetInput, setBudgetInput] = useState('300')
   const [insightRange, setInsightRange] = useState('week')
   const [budgetError, setBudgetError] = useState('')
@@ -107,7 +107,7 @@ function App() {
       if (txs.length === 0 && !hasSeenCharacterIntro()) setShowCharacterIntro(true)
       setWeeklyBudget(settings.weeklyBudget || 300)
       setBudgetInput(String(settings.weeklyBudget || 300))
-      setPetName(settings.petName || 'Neko')
+      setPetName(settings.petName || 'Cookie')
     } catch (err) {
       console.error('Failed to load from API:', err)
     } finally {
@@ -187,7 +187,7 @@ function App() {
     setUser(null)
     setTransactions([])
     setWeeklyBudget(300)
-    setPetName('Neko')
+    setPetName('Cookie')
     setBudgetInput('300')
     setShowCharacterIntro(false)
     setTab('home')
@@ -281,7 +281,7 @@ function App() {
 
   async function handleUpdatePetName(nextPetName) {
     const settings = await api.updateSettings({ petName: nextPetName })
-    setPetName(settings.petName || 'Neko')
+    setPetName(settings.petName || 'Cookie')
   }
 
   async function handleChangePassword(payload) {
@@ -386,10 +386,10 @@ function App() {
         >
           <div>
             <h1 style={{ margin: '0 0 6px', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>
-              NekoNest
+              Pocket Cookie
             </h1>
             <p style={{ margin: 0, fontSize: 13, color: tokens.color.subtext }}>
-              Cozy spending, one nest at a time
+              Sweet spending habits, one cookie at a time
             </p>
           </div>
           <ProfileView

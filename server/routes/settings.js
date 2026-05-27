@@ -10,7 +10,7 @@ function col() {
   return getDB().collection('settings')
 }
 
-const DEFAULT_SETTINGS = { weeklyBudget: 300, petName: 'Neko' }
+const DEFAULT_SETTINGS = { weeklyBudget: 300, petName: 'Cookie' }
 
 function userId(req) {
   return new ObjectId(req.user.id)

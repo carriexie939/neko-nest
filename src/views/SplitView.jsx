@@ -251,7 +251,7 @@ export function SplitView({ onCreateSplitExpense, shareOnly = false }) {
         <div style={billDivider} />
 
         <div style={{ padding: '8px 16px 12px', textAlign: 'center', fontSize: 11, color: '#b0a590' }}>
-          {formatBillDate(billDate)} · NekoNest
+          {formatBillDate(billDate)} · Pocket Cookie
         </div>
       </section>
     </section>

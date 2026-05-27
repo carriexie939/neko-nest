@@ -446,7 +446,7 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
         textAlign: 'center',
       }}
     >
-      By continuing, you agree to NekoNest&apos;s{' '}
+      By continuing, you agree to Pocket Cookie&apos;s{' '}
       <a href="#" style={{ color: c.warm, textDecoration: 'underline' }}>
         Terms of Service
       </a>{' '}
@@ -494,7 +494,7 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
             zIndex: 1,
           }}
         >
-          Sign in to NekoNest
+          Sign in to Pocket Cookie
         </p>
 
         <div

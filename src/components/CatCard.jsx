@@ -31,7 +31,7 @@ export function CatCard({
   const videoSrc = VIDEO_MAP[catState] || catIdle
   const [editing, setEditing] = useState(false)
   const displayName = String(username || 'friend').trim() || 'friend'
-  const companionName = String(petName || 'Neko').trim() || 'Neko'
+  const companionName = String(petName || 'Cookie').trim() || 'Cookie'
 
   function onBudgetSubmit(e) {
     e.preventDefault()

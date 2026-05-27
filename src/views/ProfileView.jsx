@@ -12,7 +12,7 @@ export function ProfileView({
   const [menuOpen, setMenuOpen] = useState(false)
   const [dialog, setDialog] = useState(null)
   const [username, setUsername] = useState(user?.username || '')
-  const [petNameInput, setPetNameInput] = useState(petName || 'Neko')
+  const [petNameInput, setPetNameInput] = useState(petName || 'Cookie')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [status, setStatus] = useState('')
@@ -23,7 +23,7 @@ export function ProfileView({
   }, [user?.username])
 
   useEffect(() => {
-    setPetNameInput(petName || 'Neko')
+    setPetNameInput(petName || 'Cookie')
   }, [petName])
 
   function openDialog(nextDialog) {
