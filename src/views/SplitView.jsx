@@ -1,14 +1,51 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { computeSplit } from '../domain/split'
 import { tokens } from '../theme/tokens'
+
+function makeSplitId() {
+  return `PAY-${Date.now().toString(36).toUpperCase().slice(-6)}`
+}
+
+function sanitizeSplitId(value) {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, '')
+    .slice(0, 16)
+}
 
 export function SplitView({ onCreateSplitExpense }) {
   const [billName, setBillName] = useState('')
   const [totalAmount, setTotalAmount] = useState('')
   const [participantCount, setParticipantCount] = useState('2')
+  const [splitId, setSplitId] = useState(() => makeSplitId())
   const [mode, setMode] = useState('auto')
   const [manualShares, setManualShares] = useState(['', ''])
   const [error, setError] = useState('')
+  const [shareStatus, setShareStatus] = useState('')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') !== 'split') return
+
+    const incomingId = sanitizeSplitId(params.get('splitId'))
+    const incomingName = params.get('billName')
+    const incomingAmount = params.get('amount')
+    const incomingPeople = params.get('people')
+    const incomingMode = params.get('mode')
+    const incomingShares = params.get('shares')
+
+    if (incomingId) setSplitId(incomingId)
+    if (incomingName) setBillName(incomingName)
+    if (incomingAmount) setTotalAmount(incomingAmount)
+    if (incomingPeople) {
+      const count = Math.max(1, Math.floor(Number(incomingPeople) || 1))
+      setParticipantCount(String(count))
+      syncManualShares(count)
+    }
+    if (incomingMode === 'manual' || incomingMode === 'auto') setMode(incomingMode)
+    if (incomingShares) setManualShares(incomingShares.split(',').slice(0, 20))
+  }, [])
 
   const splitResult = useMemo(
     () =>
@@ -60,6 +97,29 @@ export function SplitView({ onCreateSplitExpense }) {
     setTotalAmount('')
   }
 
+  function buildShareLink() {
+    if (typeof window === 'undefined') return ''
+    const params = new URLSearchParams()
+    params.set('tab', 'split')
+    params.set('splitId', splitId)
+    if (billName.trim()) params.set('billName', billName.trim())
+    if (totalAmount) params.set('amount', totalAmount)
+    params.set('people', String(Math.max(1, Math.floor(Number(participantCount) || 1))))
+    params.set('mode', mode)
+    if (mode === 'manual') params.set('shares', manualShares.join(','))
+    return `${window.location.origin}${window.location.pathname}?${params.toString()}`
+  }
+
+  async function copyShareLink() {
+    const link = buildShareLink()
+    try {
+      await navigator.clipboard.writeText(link)
+      setShareStatus('Link copied')
+    } catch {
+      setShareStatus(link)
+    }
+  }
+
   const card = {
     background: '#fefce8',
     border: `1px solid #e5d9a8`,
@@ -93,6 +153,12 @@ export function SplitView({ onCreateSplitExpense }) {
           inputMode="numeric"
           placeholder="Participants"
         />
+        <input
+          style={inputStyle}
+          value={splitId}
+          onChange={(e) => setSplitId(sanitizeSplitId(e.target.value))}
+          placeholder="Payment ID"
+        />
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <button type="button" className={mode === 'auto' ? 'btn-action' : 'btn-ghost'} onClick={() => setMode('auto')}>
             Auto Split
@@ -118,6 +184,12 @@ export function SplitView({ onCreateSplitExpense }) {
         <button type="submit" className="btn-action">
           Save as Expense
         </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+          <button type="button" className="btn-ghost" onClick={copyShareLink}>
+            Copy share link
+          </button>
+          {shareStatus ? <span style={{ fontSize: 12, color: tokens.color.subtext, wordBreak: 'break-all' }}>{shareStatus}</span> : null}
+        </div>
       </form>
 
       <section style={billCard}>
@@ -128,7 +200,7 @@ export function SplitView({ onCreateSplitExpense }) {
           </div>
           <div style={{ fontSize: 11, color: '#a0896e', marginTop: 4 }}>
             ID: <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1e3a5f' }}>
-              PAY-{Date.now().toString(36).toUpperCase().slice(-6)}
+              {splitId || 'PAY-'}
             </span>
           </div>
         </div>
@@ -221,4 +293,3 @@ const billAvatar = {
   fontSize: 13,
   fontWeight: 800,
 }
-

@@ -15,6 +15,9 @@ const CATEGORY_OPTIONS = [
   'others',
 ]
 
+const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+const UNSUPPORTED_IMAGE_MESSAGE = 'iPhone HEIC/HEIF photos are not supported for AI parsing yet. Please upload a JPG/PNG/WebP image, take a screenshot of the receipt, or set iPhone Camera > Formats to Most Compatible.'
+
 function todayDate() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -51,6 +54,26 @@ function readImageAsDataUrl(file) {
   })
 }
 
+function isUnsupportedIphoneImage(file) {
+  const type = String(file?.type || '').toLowerCase()
+  const name = String(file?.name || '').toLowerCase()
+  return type === 'image/heic' || type === 'image/heif' || name.endsWith('.heic') || name.endsWith('.heif')
+}
+
+function validateImageFile(file) {
+  if (isUnsupportedIphoneImage(file)) return UNSUPPORTED_IMAGE_MESSAGE
+  if (!SUPPORTED_IMAGE_TYPES.has(String(file?.type || '').toLowerCase())) {
+    return 'Please upload a supported receipt image: JPG, PNG, GIF, or WebP.'
+  }
+  return ''
+}
+
+function friendlyReceiptError(message) {
+  const text = String(message || '')
+  if (text.includes('valid image') || text.includes('supported image formats')) return UNSUPPORTED_IMAGE_MESSAGE
+  return text || 'Receipt parsing failed.'
+}
+
 function dateInputToLocalIso(value) {
   const [y, m, d] = String(value).split('-').map(Number)
   if (![y, m, d].every(Number.isFinite)) return new Date().toISOString()
@@ -79,6 +102,15 @@ export function ReceiptView({ onCreateReceiptExpense, categoryOptions = CATEGORY
     setFileName(file.name)
 
     try {
+      const fileError = validateImageFile(file)
+      if (fileError) {
+        setPreviewUrl('')
+        setDraft(emptyDraft())
+        setError(fileError)
+        setPhase('review')
+        event.target.value = ''
+        return
+      }
       const dataUrl = await readImageAsDataUrl(file)
       setPreviewUrl(dataUrl)
       const parsed = await api.parseReceipt(dataUrl)
@@ -91,7 +123,7 @@ export function ReceiptView({ onCreateReceiptExpense, categoryOptions = CATEGORY
       setPhase('review')
     } catch (err) {
       setDraft(emptyDraft())
-      setError(err.message || 'Receipt parsing failed.')
+      setError(friendlyReceiptError(err.message))
       setPhase('review')
     }
   }
@@ -153,13 +185,13 @@ export function ReceiptView({ onCreateReceiptExpense, categoryOptions = CATEGORY
         <label style={uploadBox}>
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/gif,image/webp"
             capture="environment"
             onChange={handleFileChange}
             style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
           />
           <span style={{ fontWeight: 800 }}>{phase === 'parsing' ? 'Reading receipt...' : 'Take photo or upload'}</span>
-          <span style={{ fontSize: 12, color: tokens.color.subtext }}>JPG, PNG, or HEIC from your phone camera</span>
+          <span style={{ fontSize: 12, color: tokens.color.subtext }}>JPG, PNG, GIF, or WebP. iPhone HEIC is not supported.</span>
         </label>
 
         {previewUrl ? (

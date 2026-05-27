@@ -16,6 +16,7 @@ const CATEGORY_HINTS = [
   'travel',
   'others',
 ]
+const SUPPORTED_IMAGE_DATA_URL_RE = /^data:image\/(?:jpeg|jpg|png|gif|webp);base64,/i
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10)
@@ -212,8 +213,10 @@ async function parseReceiptWithOpenAI(imageDataUrl) {
 receiptsRouter.post('/parse', async (req, res) => {
   try {
     const imageDataUrl = String(req.body.imageDataUrl || '')
-    if (!imageDataUrl.startsWith('data:image/')) {
-      return res.status(400).json({ error: 'Please upload a receipt image.' })
+    if (!SUPPORTED_IMAGE_DATA_URL_RE.test(imageDataUrl)) {
+      return res.status(400).json({
+        error: 'Please upload a supported receipt image: JPG, PNG, GIF, or WebP. iPhone HEIC/HEIF photos are not supported yet.',
+      })
     }
     if (imageDataUrl.length > 10_000_000) {
       return res.status(413).json({ error: 'Receipt image is too large. Please upload a smaller image.' })

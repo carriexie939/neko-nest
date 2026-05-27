@@ -72,7 +72,11 @@ function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(false)
   const [showCharacterIntro, setShowCharacterIntro] = useState(false)
-  const [tab, setTab] = useState('home')
+  const [tab, setTab] = useState(() => {
+    if (typeof window === 'undefined') return 'home'
+    const requestedTab = new URLSearchParams(window.location.search).get('tab')
+    return TABS.some((item) => item.id === requestedTab) ? requestedTab : 'home'
+  })
   const [transactions, setTransactions] = useState([])
   const [type, setType] = useState('expense')
   const [title, setTitle] = useState('')

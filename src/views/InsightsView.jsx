@@ -39,6 +39,7 @@ export function InsightsView({
   const displayTrends = showMock ? MOCK_12 : trends
 
   const activeSummary = insightRange === 'week' ? weeklySummary : monthlySummary
+  const activeBudgetTarget = insightRange === 'week' ? weeklyBudget : weeklyBudget * 4
   const top3 = topSpendingCategories(activeSummary, 3)
 
   return (
@@ -61,7 +62,13 @@ export function InsightsView({
             Monthly
           </button>
         </div>
-        <p style={{ margin: '4px 0' }}>Budget target (weekly): <span style={numStyle}>${weeklyBudget.toFixed(2)}</span></p>
+        <p style={summaryMeta}>
+          {formatRangeLabel(activeSummary.start, activeSummary.end)} · {activeSummary.transactionCount} records
+        </p>
+        <p style={{ margin: '4px 0' }}>
+          Budget target ({insightRange === 'week' ? 'weekly' : 'monthly'}):{' '}
+          <span style={numStyle}>${activeBudgetTarget.toFixed(2)}</span>
+        </p>
         <p style={{ margin: '4px 0' }}>Income: <span style={numStyle}>${activeSummary.income.toFixed(2)}</span></p>
         <p style={{ margin: '4px 0' }}>Expense: <span style={numStyle}>${activeSummary.expense.toFixed(2)}</span></p>
         <p style={{ margin: '4px 0' }}>Balance: <span style={numStyle}>${activeSummary.balance.toFixed(2)}</span></p>
@@ -194,6 +201,23 @@ const PIE_COLORS = [
   '#5eead4', '#ca8a04', '#eab308', '#fde047',
 ]
 
+function formatDateShort(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = MONTH_NAMES[date.getMonth()]
+  return `${day} ${month}`
+}
+
+function formatRangeLabel(startValue, endValue) {
+  const start = new Date(startValue)
+  const end = new Date(endValue)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return ''
+  const inclusiveEnd = new Date(end)
+  inclusiveEnd.setDate(inclusiveEnd.getDate() - 1)
+  return `${formatDateShort(start)} - ${formatDateShort(inclusiveEnd)}`
+}
+
 function TrendPieChart({ trends }) {
   const total = trends.reduce((s, t) => s + t.total, 0)
   if (total === 0) return null
@@ -211,6 +235,27 @@ function TrendPieChart({ trends }) {
     const startAngle = cumAngle
     const endAngle = cumAngle + fraction * Math.PI * 2
     cumAngle = endAngle
+
+    if (fraction >= 0.999) {
+      slices.push(
+        <circle key={`slice-${t.year}-${t.month}`} cx={CX} cy={CY} r={R} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+      )
+      labels.push(
+        <text
+          key={`pct-${t.year}-${t.month}`}
+          x={CX}
+          y={CY}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize="7"
+          fontWeight="800"
+          fill="#fff"
+        >
+          100%
+        </text>
+      )
+      return
+    }
 
     const x1 = CX + R * Math.cos(startAngle)
     const y1 = CY + R * Math.sin(startAngle)
@@ -291,6 +336,12 @@ const CAT_ICONS = {
 const numStyle = {
   fontWeight: 800,
   color: '#1e3a5f',
+}
+
+const summaryMeta = {
+  margin: '0 0 8px',
+  fontSize: 12,
+  color: tokens.color.subtext,
 }
 
 const card = {
