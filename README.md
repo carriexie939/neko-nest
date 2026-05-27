@@ -2,6 +2,37 @@
 
 A single-page expense tracking application where a virtual cat reacts to your spending habits. Built with React, Node.js/Express, and MongoDB.
 
+## Product Introduction
+
+Hi everyone, my name is Carrie, and I am the Product Manager of Pocket Cookie.
+
+Pocket Cookie is a pet companion expense tracking app. I wanted to build this product because many people find it hard to keep tracking their expenses.
+
+There are three main problems:
+
+- Expense tracking can feel boring, so people often lose motivation.
+- Expense tracking can be troublesome. For example, if users forget to keep a receipt, it is hard to remember the details later.
+- Expenses are easy to miss, especially when friends split bills after dinner or group activities.
+
+Pocket Cookie is designed to make expense tracking easier, more fun, and easier to keep using.
+
+Pocket Cookie is not just a normal expense tracking app. It also has a digital pet companion. Every expense users record can affect the pet's mood. The pet character is a cat inspired by my own cat, Cookie, also called "Binggan" in Chinese.
+
+The cat has five states: welcome, happy, idle, shocked, and angry. When users have not recorded anything yet, the cat welcomes them and encourages them to start. When income is higher than expenses, the cat becomes happy. When spending goes over the weekly budget, the cat becomes shocked. When spending is much higher than income, the cat becomes angry and reminds users to be careful.
+
+In this way, Pocket Cookie makes expense tracking feel more like caring for a pet, not just recording numbers.
+
+Pocket Cookie also has two useful features:
+
+- **Receipt recognition**: Users can take a photo of a paper receipt or upload a digital receipt. AI reads the receipt and helps record the expense automatically, saving time and reducing manual input.
+- **Bill sharing**: When friends split a bill, users can quickly create and share a bill. Friends can see how much they need to pay, and the expense can also be saved into the app.
+
+Finally, Pocket Cookie provides weekly and monthly reports. Users can see how much they spent, their spending trends, their top spending categories, and their biggest expenses.
+
+Overall, Pocket Cookie helps users understand their spending habits in a simple and cute way. With a digital pet, receipt recognition, bill sharing, and reports, Pocket Cookie makes expense tracking easier and more enjoyable.
+
+Welcome to Pocket Cookie. Let us build healthier spending habits together with your little cat.
+
 ## Problem Statement
 
 Pocket Cookie is a single-page expense tracking application designed to make personal finance management more engaging and intuitive. Instead of presenting expense tracking as a purely functional task, the app introduces an animated virtual cat companion whose mood reflects the user’s financial behaviour. When the user overspends, the cat becomes upset; when spending is well managed, the cat responds positively. This emotional feedback loop encourages users to build healthier spending habits in a more interactive way.
