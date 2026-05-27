@@ -8,6 +8,7 @@ import { HomeView } from './views/HomeView'
 import { InsightsView } from './views/InsightsView'
 import { ReceiptView } from './views/ReceiptView'
 import { SplitView } from './views/SplitView'
+import { ProfileView } from './views/ProfileView'
 import { TabBar } from './components/TabBar'
 import { CharacterOnboarding } from './components/CharacterOnboarding'
 import { hasSeenCharacterIntro } from './components/characterIntroState'
@@ -66,6 +67,12 @@ function txId(tx) {
   return tx._id || tx.id
 }
 
+function isPublicSplitShare() {
+  if (typeof window === 'undefined') return false
+  const params = new URLSearchParams(window.location.search)
+  return params.get('tab') === 'split' && params.get('share') === '1'
+}
+
 function App() {
   const [sessionReady, setSessionReady] = useState(false)
   const [oauthFlash, setOauthFlash] = useState(null)
@@ -86,6 +93,7 @@ function App() {
   const [txDateFrom, setTxDateFrom] = useState(() => toDateInputValue())
   const [txDateTo, setTxDateTo] = useState(() => toDateInputValue())
   const [weeklyBudget, setWeeklyBudget] = useState(300)
+  const [petName, setPetName] = useState('Neko')
   const [budgetInput, setBudgetInput] = useState('300')
   const [insightRange, setInsightRange] = useState('week')
   const [budgetError, setBudgetError] = useState('')
@@ -99,6 +107,7 @@ function App() {
       if (txs.length === 0 && !hasSeenCharacterIntro()) setShowCharacterIntro(true)
       setWeeklyBudget(settings.weeklyBudget || 300)
       setBudgetInput(String(settings.weeklyBudget || 300))
+      setPetName(settings.petName || 'Neko')
     } catch (err) {
       console.error('Failed to load from API:', err)
     } finally {
@@ -178,6 +187,7 @@ function App() {
     setUser(null)
     setTransactions([])
     setWeeklyBudget(300)
+    setPetName('Neko')
     setBudgetInput('300')
     setShowCharacterIntro(false)
     setTab('home')
@@ -263,6 +273,21 @@ function App() {
     }
   }
 
+  async function handleUpdateUsername(nextUsername) {
+    const result = await api.updateProfile({ username: nextUsername })
+    setSession(result.token, result.user)
+    setUser(result.user)
+  }
+
+  async function handleUpdatePetName(nextPetName) {
+    const settings = await api.updateSettings({ petName: nextPetName })
+    setPetName(settings.petName || 'Neko')
+  }
+
+  async function handleChangePassword(payload) {
+    await api.changePassword(payload)
+  }
+
   async function handleCreateSplitExpense(payload) {
     const cat = 'bills'
     const items = [{
@@ -301,6 +326,16 @@ function App() {
     return (
       <div style={{ ...shell, display: 'grid', placeItems: 'center' }}>
         <p>Loading...</p>
+      </div>
+    )
+  }
+
+  if (isPublicSplitShare()) {
+    return (
+      <div style={shell}>
+        <div style={{ ...inner, paddingTop: 28, paddingBottom: 28 }}>
+          <SplitView shareOnly />
+        </div>
       </div>
     )
   }
@@ -357,9 +392,14 @@ function App() {
               Cozy spending, one nest at a time
             </p>
           </div>
-          <button type="button" className="btn-ghost" style={{ marginTop: 4, flexShrink: 0 }} onClick={handleLogout}>
-            Log out
-          </button>
+          <ProfileView
+            user={user}
+            petName={petName}
+            onUpdateUsername={handleUpdateUsername}
+            onUpdatePetName={handleUpdatePetName}
+            onChangePassword={handleChangePassword}
+            onLogout={handleLogout}
+          />
         </header>
         <div key={tab} className="tab-content">
         {tab === 'home' && (
@@ -394,10 +434,13 @@ function App() {
             handleEditTransaction={handleEditTransaction}
             formatTransactionDate={formatTransactionDate}
             categoryOptions={CATEGORY_OPTIONS}
+            user={user}
+            petName={petName}
           />
         )}
         {tab === 'insights' && (
           <InsightsView
+            transactions={transactions}
             weeklySummary={weeklySummary}
             monthlySummary={monthlySummary}
             insightRange={insightRange}

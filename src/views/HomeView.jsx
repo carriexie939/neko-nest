@@ -37,6 +37,8 @@ export function HomeView({
   handleEditTransaction,
   formatTransactionDate,
   categoryOptions,
+  user,
+  petName,
 }) {
   const [showRecent, setShowRecent] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -100,6 +102,8 @@ export function HomeView({
         budgetError={budgetError}
         setBudgetError={setBudgetError}
         handleBudgetSubmit={handleBudgetSubmit}
+        username={user?.username}
+        petName={petName}
       />
 
 

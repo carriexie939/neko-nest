@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { topSpendingCategories } from '../domain/summary'
-import { fetchMonthlyTrends } from '../utils/api'
 import { tokens } from '../theme/tokens'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export function InsightsView({
+  transactions = [],
   weeklySummary,
   monthlySummary,
   insightRange,
@@ -15,12 +15,6 @@ export function InsightsView({
   const [trends, setTrends] = useState([])
   const [showMock, setShowMock] = useState(false)
   const [showCatMock, setShowCatMock] = useState(false)
-
-  useEffect(() => {
-    fetchMonthlyTrends()
-      .then(setTrends)
-      .catch(() => setTrends([]))
-  }, [])
 
   const MOCK_12 = [
     { year: 2025, month: 5, total: 820 },
@@ -36,7 +30,8 @@ export function InsightsView({
     { year: 2026, month: 3, total: 1100 },
     { year: 2026, month: 4, total: 690 },
   ]
-  const displayTrends = showMock ? MOCK_12 : trends
+  const realTrends = useMemo(() => buildMonthlyTrends(transactions), [transactions])
+  const displayTrends = showMock ? MOCK_12 : realTrends
 
   const activeSummary = insightRange === 'week' ? weeklySummary : monthlySummary
   const activeBudgetTarget = insightRange === 'week' ? weeklyBudget : weeklyBudget * 4
@@ -216,6 +211,31 @@ function formatRangeLabel(startValue, endValue) {
   const inclusiveEnd = new Date(end)
   inclusiveEnd.setDate(inclusiveEnd.getDate() - 1)
   return `${formatDateShort(start)} - ${formatDateShort(inclusiveEnd)}`
+}
+
+function buildMonthlyTrends(transactions = []) {
+  const bucket = new Map()
+  transactions
+    .filter((tx) => tx.type === 'expense')
+    .forEach((tx) => {
+      const date = new Date(tx.date)
+      const amount = Number(tx.amount)
+      if (Number.isNaN(date.getTime()) || !Number.isFinite(amount)) return
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const current = bucket.get(key) || {
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        total: 0,
+        count: 0,
+      }
+      current.total += amount
+      current.count += 1
+      bucket.set(key, current)
+    })
+
+  return Array.from(bucket.values())
+    .sort((a, b) => (a.year - b.year) || (a.month - b.month))
+    .slice(-12)
 }
 
 function TrendPieChart({ trends }) {

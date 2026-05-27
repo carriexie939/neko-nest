@@ -10,7 +10,7 @@ function col() {
   return getDB().collection('settings')
 }
 
-const DEFAULT_SETTINGS = { weeklyBudget: 300 }
+const DEFAULT_SETTINGS = { weeklyBudget: 300, petName: 'Neko' }
 
 function userId(req) {
   return new ObjectId(req.user.id)
@@ -19,7 +19,12 @@ function userId(req) {
 settingsRouter.get('/', async (req, res) => {
   try {
     const doc = await col().findOne({ userId: userId(req) })
-    res.json(doc ? { weeklyBudget: doc.weeklyBudget } : DEFAULT_SETTINGS)
+    res.json({
+      ...DEFAULT_SETTINGS,
+      ...(doc || {}),
+      userId: undefined,
+      _id: undefined,
+    })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -27,17 +32,35 @@ settingsRouter.get('/', async (req, res) => {
 
 settingsRouter.put('/', async (req, res) => {
   try {
-    const weeklyBudget = Number(req.body.weeklyBudget)
-    if (!Number.isFinite(weeklyBudget) || weeklyBudget <= 0) {
-      return res.status(400).json({ error: 'weeklyBudget must be a positive number' })
+    const update = {}
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'weeklyBudget')) {
+      const weeklyBudget = Number(req.body.weeklyBudget)
+      if (!Number.isFinite(weeklyBudget) || weeklyBudget <= 0) {
+        return res.status(400).json({ error: 'weeklyBudget must be a positive number' })
+      }
+      update.weeklyBudget = weeklyBudget
     }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'petName')) {
+      const petName = String(req.body.petName || '').trim()
+      if (petName.length < 1 || petName.length > 32) {
+        return res.status(400).json({ error: 'Pet name must be 1-32 characters.' })
+      }
+      update.petName = petName
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ error: 'No settings fields provided.' })
+    }
+
     const uid = userId(req)
     const result = await col().findOneAndUpdate(
       { userId: uid },
-      { $set: { weeklyBudget }, $setOnInsert: { userId: uid } },
+      { $set: update, $setOnInsert: { userId: uid } },
       { upsert: true, returnDocument: 'after' },
     )
-    res.json({ weeklyBudget: result.weeklyBudget })
+    res.json({ ...DEFAULT_SETTINGS, ...result, userId: undefined, _id: undefined })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

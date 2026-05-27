@@ -38,6 +38,36 @@ export function fetchMe() {
   return request('/auth/me')
 }
 
+export function updateProfile(fields) {
+  return request('/auth/profile', {
+    method: 'PUT',
+    body: JSON.stringify(fields),
+  })
+}
+
+export function changePassword({ newPassword }) {
+  return request('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ newPassword }),
+  })
+}
+
+export function requestPasswordReset(email) {
+  return request('/auth/forgot-password', {
+    auth: false,
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resetPassword({ token, newPassword }) {
+  return request('/auth/reset-password', {
+    auth: false,
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  })
+}
+
 export function checkEmailRegistered(email) {
   return request('/auth/check-email', {
     auth: false,

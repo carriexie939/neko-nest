@@ -28,6 +28,9 @@ async function start() {
   const users = getDB().collection('users')
   await users.createIndex({ username: 1 }, { unique: true })
   await users.createIndex({ email: 1 }, { unique: true, sparse: true })
+  const passwordResetTokens = getDB().collection('passwordResetTokens')
+  await passwordResetTokens.createIndex({ tokenHash: 1 }, { unique: true })
+  await passwordResetTokens.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
   app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`))
 }
 

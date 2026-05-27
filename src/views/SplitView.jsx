@@ -3,21 +3,21 @@ import { computeSplit } from '../domain/split'
 import { tokens } from '../theme/tokens'
 
 function makeSplitId() {
-  return `PAY-${Date.now().toString(36).toUpperCase().slice(-6)}`
+  return String(Math.floor(Math.random() * 10000000000)).padStart(10, '0')
 }
 
 function sanitizeSplitId(value) {
   return String(value || '')
-    .toUpperCase()
-    .replace(/[^A-Z0-9-]/g, '')
-    .slice(0, 16)
+    .replace(/\D/g, '')
+    .slice(0, 10)
 }
 
-export function SplitView({ onCreateSplitExpense }) {
+export function SplitView({ onCreateSplitExpense, shareOnly = false }) {
   const [billName, setBillName] = useState('')
   const [totalAmount, setTotalAmount] = useState('')
   const [participantCount, setParticipantCount] = useState('2')
   const [splitId, setSplitId] = useState(() => makeSplitId())
+  const [billDate, setBillDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [mode, setMode] = useState('auto')
   const [manualShares, setManualShares] = useState(['', ''])
   const [error, setError] = useState('')
@@ -34,6 +34,7 @@ export function SplitView({ onCreateSplitExpense }) {
     const incomingPeople = params.get('people')
     const incomingMode = params.get('mode')
     const incomingShares = params.get('shares')
+    const incomingDate = params.get('date')
 
     if (incomingId) setSplitId(incomingId)
     if (incomingName) setBillName(incomingName)
@@ -45,6 +46,7 @@ export function SplitView({ onCreateSplitExpense }) {
     }
     if (incomingMode === 'manual' || incomingMode === 'auto') setMode(incomingMode)
     if (incomingShares) setManualShares(incomingShares.split(',').slice(0, 20))
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(incomingDate || ''))) setBillDate(incomingDate)
   }, [])
 
   const splitResult = useMemo(
@@ -86,7 +88,7 @@ export function SplitView({ onCreateSplitExpense }) {
       return
     }
 
-    onCreateSplitExpense({
+    onCreateSplitExpense?.({
       billName: billName.trim(),
       amount: Number(totalAmount),
       participantCount: Number(participantCount),
@@ -101,11 +103,13 @@ export function SplitView({ onCreateSplitExpense }) {
     if (typeof window === 'undefined') return ''
     const params = new URLSearchParams()
     params.set('tab', 'split')
+    params.set('share', '1')
     params.set('splitId', splitId)
     if (billName.trim()) params.set('billName', billName.trim())
     if (totalAmount) params.set('amount', totalAmount)
     params.set('people', String(Math.max(1, Math.floor(Number(participantCount) || 1))))
     params.set('mode', mode)
+    params.set('date', billDate)
     if (mode === 'manual') params.set('shares', manualShares.join(','))
     return `${window.location.origin}${window.location.pathname}?${params.toString()}`
   }
@@ -130,7 +134,8 @@ export function SplitView({ onCreateSplitExpense }) {
   }
 
   return (
-    <section>
+    <section style={shareOnly ? shareShell : undefined}>
+      {!shareOnly ? (
       <form onSubmit={handleSubmitSplit} style={card}>
         <h3 style={{ marginTop: 0 }}>Split Bill</h3>
         <input
@@ -157,7 +162,14 @@ export function SplitView({ onCreateSplitExpense }) {
           style={inputStyle}
           value={splitId}
           onChange={(e) => setSplitId(sanitizeSplitId(e.target.value))}
-          placeholder="Payment ID"
+          inputMode="numeric"
+          placeholder="Pay ID"
+        />
+        <input
+          style={inputStyle}
+          value={billDate}
+          onChange={(e) => setBillDate(e.target.value)}
+          type="date"
         />
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <button type="button" className={mode === 'auto' ? 'btn-action' : 'btn-ghost'} onClick={() => setMode('auto')}>
@@ -191,16 +203,17 @@ export function SplitView({ onCreateSplitExpense }) {
           {shareStatus ? <span style={{ fontSize: 12, color: tokens.color.subtext, wordBreak: 'break-all' }}>{shareStatus}</span> : null}
         </div>
       </form>
+      ) : null}
 
-      <section style={billCard}>
+      <section style={shareOnly ? { ...billCard, marginTop: 0, maxWidth: 380 } : billCard}>
         <div style={billHeader}>
           <div style={{ fontSize: 11, color: '#a0896e', letterSpacing: 1 }}>SPLIT BILL</div>
           <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }}>
             {billName.trim() || 'Untitled Bill'}
           </div>
           <div style={{ fontSize: 11, color: '#a0896e', marginTop: 4 }}>
-            ID: <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1e3a5f' }}>
-              {splitId || 'PAY-'}
+            PAY ID: <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#1e3a5f' }}>
+              {splitId || '0000000000'}
             </span>
           </div>
         </div>
@@ -238,11 +251,17 @@ export function SplitView({ onCreateSplitExpense }) {
         <div style={billDivider} />
 
         <div style={{ padding: '8px 16px 12px', textAlign: 'center', fontSize: 11, color: '#b0a590' }}>
-          {new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} · NekoNest
+          {formatBillDate(billDate)} · NekoNest
         </div>
       </section>
     </section>
   )
+}
+
+function formatBillDate(value) {
+  const date = new Date(`${value}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 const inputStyle = {
@@ -255,12 +274,21 @@ const inputStyle = {
 }
 
 const billCard = {
+  width: '100%',
+  boxSizing: 'border-box',
   background: '#fff',
   border: `1px solid #e5d9a8`,
   borderRadius: 16,
   boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
   overflow: 'hidden',
   marginBottom: 12,
+}
+
+const shareShell = {
+  minHeight: 'calc(100vh - 56px)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 }
 
 const billHeader = {

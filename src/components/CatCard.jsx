@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CAT_STATES, getCatMoodCopy, getCatMoodLabel } from '../domain/catState'
+import { CAT_STATES, getCatMoodLabel } from '../domain/catState'
 import { tokens } from '../theme/tokens'
 import catWelcome from '../assets/cat-welcome.mp4'
 import catIdle from '../assets/cat-idle.mp4'
@@ -26,9 +26,12 @@ const VIDEO_MAP = {
 export function CatCard({
   catState, expense, weeklyBudget, remaining,
   budgetInput, setBudgetInput, budgetError, setBudgetError, handleBudgetSubmit,
+  username, petName,
 }) {
   const videoSrc = VIDEO_MAP[catState] || catIdle
   const [editing, setEditing] = useState(false)
+  const displayName = String(username || 'friend').trim() || 'friend'
+  const companionName = String(petName || 'Neko').trim() || 'Neko'
 
   function onBudgetSubmit(e) {
     e.preventDefault()
@@ -61,7 +64,7 @@ export function CatCard({
               {getCatMoodLabel(catState)}
             </div>
             <p style={{ margin: '6px 0 0', color: tokens.color.subtext, fontSize: 13 }}>
-              {getCatMoodCopy(catState)}
+              Hi, {displayName}! I’m your little {companionName}. Start tracking to care for me, and remember to come back to see me often ❤️ Meow~
             </p>
 
             <div style={{ marginTop: 10 }}>

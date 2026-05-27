@@ -138,6 +138,11 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
   const [password, setPassword] = useState('')
   const [regUsername, setRegUsername] = useState('')
   const [regPassword, setRegPassword] = useState('')
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetToken, setResetToken] = useState('')
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState('')
+  const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const googleFallbackTimer = useRef(null)
@@ -203,6 +208,18 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
     fontWeight: 600,
     fontFamily: 'inherit',
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('resetToken')
+    if (!token) return
+    setResetToken(token)
+    setScreen('reset-password')
+    setError('')
+    setNotice('')
+    window.history.replaceState(null, '', window.location.pathname)
+  }, [])
 
   useEffect(() => {
     if (flashError) {
@@ -282,7 +299,12 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
     setPassword('')
     setRegUsername('')
     setRegPassword('')
+    setResetEmail('')
+    setResetToken('')
+    setResetPassword('')
+    setResetPasswordConfirm('')
     setFlowEmail('')
+    setNotice('')
   }
 
   async function handleContinueEmail(e) {
@@ -352,6 +374,55 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
       onAuthenticated(user)
     } catch (err) {
       setError(err.message || 'Registration failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleForgotPasswordSubmit(e) {
+    e.preventDefault()
+    setError('')
+    setNotice('')
+    const em = resetEmail.trim().toLowerCase()
+    if (!EMAIL_RE.test(em)) {
+      setError('Please enter a valid email address.')
+      return
+    }
+    setBusy(true)
+    try {
+      await api.requestPasswordReset(em)
+      setNotice('If that email exists, a reset link has been generated. In local dev, check the backend terminal.')
+    } catch (err) {
+      setError(err.message || 'Could not start password reset.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleResetPasswordSubmit(e) {
+    e.preventDefault()
+    setError('')
+    setNotice('')
+    const pwdErr = validatePasswordClient(resetPassword)
+    if (pwdErr) {
+      setError(`Password must include: ${pwdErr}.`)
+      return
+    }
+    if (resetPassword !== resetPasswordConfirm) {
+      setError('New passwords do not match.')
+      return
+    }
+    setBusy(true)
+    try {
+      await api.resetPassword({ token: resetToken, newPassword: resetPassword })
+      setResetToken('')
+      setResetPassword('')
+      setResetPasswordConfirm('')
+      setPassword('')
+      setScreen('welcome')
+      setNotice('Password updated. Please sign in with your new password.')
+    } catch (err) {
+      setError(err.message || 'Could not reset password.')
     } finally {
       setBusy(false)
     }
@@ -507,6 +578,10 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
           </button>
         </form>
 
+        {notice ? (
+          <p style={{ margin: '16px 0 0', fontSize: 13, color: '#047857', textAlign: 'center', fontWeight: 700 }}>{notice}</p>
+        ) : null}
+
         {error ? (
           <p style={{ margin: '16px 0 0', fontSize: 13, color: c.danger, textAlign: 'center' }}>{error}</p>
         ) : null}
@@ -560,6 +635,170 @@ export function AuthScreen({ onAuthenticated, flashError, onClearFlash }) {
             }}
           >
             {busy ? 'Please wait…' : 'Log in'}
+          </button>
+        </form>
+        <button
+          type="button"
+          onClick={() => {
+            setResetEmail(flowEmail)
+            setScreen('forgot-password')
+            setError('')
+            setNotice('')
+          }}
+          style={{
+            border: 0,
+            background: 'transparent',
+            color: c.accentStrong,
+            cursor: 'pointer',
+            display: 'block',
+            fontSize: 13,
+            fontWeight: 700,
+            margin: '14px auto 0',
+            padding: 4,
+          }}
+        >
+          Forgot password?
+        </button>
+      </div>
+    )
+  }
+
+  if (screen === 'forgot-password') {
+    return (
+      <div className="auth-screen" style={card}>
+        {backBtn}
+        <h1
+          style={{
+            margin: '0 0 8px',
+            fontSize: 26,
+            fontWeight: 700,
+            letterSpacing: '-0.03em',
+            color: c.text,
+          }}
+        >
+          Reset password
+        </h1>
+        <p style={{ margin: '0 0 24px', fontSize: 14, color: c.subtext, lineHeight: 1.45 }}>
+          Enter your account email. We will generate a secure reset link.
+        </p>
+
+        <form onSubmit={handleForgotPasswordSubmit}>
+          <label style={label} htmlFor="reset-email">
+            Email
+          </label>
+          <input
+            id="reset-email"
+            type="email"
+            autoComplete="email"
+            placeholder="Enter email address"
+            value={resetEmail}
+            onChange={(ev) => {
+              setResetEmail(ev.target.value)
+              setError('')
+              setNotice('')
+            }}
+            style={{ ...pillInput, marginBottom: 16 }}
+          />
+          {notice ? (
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: '#047857', fontWeight: 700 }}>{notice}</p>
+          ) : null}
+          {error ? (
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: c.danger }}>{error}</p>
+          ) : null}
+          <button
+            type="submit"
+            disabled={busy}
+            style={{
+              ...primaryBtn,
+              opacity: busy ? 0.85 : 1,
+              cursor: busy ? 'wait' : 'pointer',
+            }}
+          >
+            {busy ? 'Please wait…' : 'Send reset link'}
+          </button>
+        </form>
+      </div>
+    )
+  }
+
+  if (screen === 'reset-password') {
+    return (
+      <div className="auth-screen" style={card}>
+        {backBtn}
+        <h1
+          style={{
+            margin: '0 0 8px',
+            fontSize: 26,
+            fontWeight: 700,
+            letterSpacing: '-0.03em',
+            color: c.text,
+          }}
+        >
+          New password
+        </h1>
+        <p style={{ margin: '0 0 24px', fontSize: 14, color: c.subtext, lineHeight: 1.45 }}>
+          Create a new password for your account.
+        </p>
+
+        <form onSubmit={handleResetPasswordSubmit}>
+          <label style={label} htmlFor="reset-pass">
+            New password
+          </label>
+          <input
+            id="reset-pass"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Strong password"
+            value={resetPassword}
+            onChange={(ev) => {
+              setResetPassword(ev.target.value)
+              setError('')
+            }}
+            style={{ ...pillInput, marginBottom: 16 }}
+          />
+
+          <label style={label} htmlFor="reset-pass-confirm">
+            Confirm new password
+          </label>
+          <input
+            id="reset-pass-confirm"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Confirm password"
+            value={resetPasswordConfirm}
+            onChange={(ev) => {
+              setResetPasswordConfirm(ev.target.value)
+              setError('')
+            }}
+            style={{ ...pillInput, marginBottom: 12 }}
+          />
+
+          <ul
+            style={{
+              margin: '0 0 18px',
+              paddingLeft: 18,
+              fontSize: 12,
+              color: c.subtext,
+              lineHeight: 1.55,
+            }}
+          >
+            <li>At least 9 characters</li>
+            <li>One uppercase and one lowercase letter</li>
+            <li>One special character</li>
+          </ul>
+          {error ? (
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: c.danger }}>{error}</p>
+          ) : null}
+          <button
+            type="submit"
+            disabled={busy}
+            style={{
+              ...primaryBtn,
+              opacity: busy ? 0.85 : 1,
+              cursor: busy ? 'wait' : 'pointer',
+            }}
+          >
+            {busy ? 'Please wait…' : 'Update password'}
           </button>
         </form>
       </div>
